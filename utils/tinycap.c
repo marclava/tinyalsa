@@ -76,6 +76,7 @@ void sigint_handler(int sig)
     }
 }
 
+
 int main(int argc, char **argv)
 {
     FILE *file;
@@ -164,7 +165,7 @@ int main(int argc, char **argv)
         format = PCM_FORMAT_S32_LE;
         break;
     case 24:
-        format = PCM_FORMAT_S24_LE;
+        format = PCM_FORMAT_S24_3LE;
         break;
     case 16:
         format = PCM_FORMAT_S16_LE;
@@ -206,6 +207,7 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
 
 unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
                             bool use_mmap, unsigned int channels, unsigned int rate,
@@ -259,7 +261,7 @@ unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
     total_frames_read = 0;
     frames_read = 0;
     while (capturing) {
-        frames_read = pcm_readi(pcm, buffer, pcm_get_buffer_size(pcm));
+        frames_read = pcm_readi(pcm, buffer, pcm_get_buffer_size(pcm), NULL);
         total_frames_read += frames_read;
         if ((total_frames_read / rate) >= capture_time) {
             capturing = 0;
