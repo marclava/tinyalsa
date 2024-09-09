@@ -1360,7 +1360,7 @@ int pcm_mmap_commit(struct pcm *pcm, unsigned int offset, unsigned int frames)
 
 static int pcm_mmap_transfer_areas(struct pcm *pcm, char *buf,
                                 unsigned int offset, unsigned int size,
-                                void (*use_pcm_areas)(char *, unsigned int, unsigned int))
+                                void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     // https://stackoverflow.com/a/840504
 
@@ -1377,7 +1377,7 @@ static int pcm_mmap_transfer_areas(struct pcm *pcm, char *buf,
             pcm_areas_copy(pcm, pcm_offset, buf, offset, frames);
         }
         else {
-           (*use_pcm_areas)(pcm_areas, pcm_offset, frames);
+           (*use_pcm_areas)(pcm, pcm_areas, pcm_offset, frames);
         }
 
         commit = pcm_mmap_commit(pcm, pcm_offset, frames);
@@ -1506,7 +1506,7 @@ int pcm_wait(struct pcm *pcm, int timeout)
  * However, this doesn't seems to offer any advantage over
  * the read/write syscalls. Should it be removed?
  */
-static int pcm_mmap_transfer(struct pcm *pcm, void *buffer, unsigned int frames, void (*use_pcm_areas)(char *, unsigned int, unsigned int))
+static int pcm_mmap_transfer(struct pcm *pcm, void *buffer, unsigned int frames, void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     int is_playback;
 
@@ -1660,7 +1660,7 @@ static int pcm_rw_transfer(struct pcm *pcm, void *data, unsigned int frames)
 }
 
 static int pcm_generic_transfer(struct pcm *pcm, void *data, unsigned int frames,
-                                void (*use_pcm_areas)(char *, unsigned int, unsigned int))
+                                void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     int res;
 
@@ -1738,7 +1738,7 @@ int pcm_writei(struct pcm *pcm, const void *data, unsigned int frame_count)
  * @ingroup libtinyalsa-pcm
  */
 int pcm_readi(struct pcm *pcm, void *data, unsigned int frame_count,
-    void (*use_pcm_areas)(char *, unsigned int, unsigned int))
+    void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     if (!(pcm->flags & PCM_IN))
         return -EINVAL;

@@ -333,7 +333,7 @@ unsigned int pcm_get_subdevice(const struct pcm *pcm);
 
 int pcm_writei(struct pcm *pcm, const void *data, unsigned int frame_count) TINYALSA_WARN_UNUSED_RESULT;
 
-int pcm_readi(struct pcm *pcm, void *data, unsigned int frame_count, void (*use_pcm_areas)(char *, unsigned int, unsigned int)) TINYALSA_WARN_UNUSED_RESULT;
+int pcm_readi(struct pcm *pcm, void *data, unsigned int frame_count, void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int)) TINYALSA_WARN_UNUSED_RESULT;
 
 int pcm_write(struct pcm *pcm, const void *data, unsigned int count) TINYALSA_DEPRECATED;
 
