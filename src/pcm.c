@@ -1299,7 +1299,7 @@ static void pcm_mmap_appl_forward(struct pcm *pcm, int frames)
     pcm->mmap_control->appl_ptr = appl_ptr;
 }
 
-int pcm_mmap_begin(struct pcm *pcm, void **areas, unsigned int *offset,
+int pcm_mmap_begin(struct pcm *pcm, char **areas, unsigned int *offset,
                    unsigned int *frames)
 {
     unsigned int continuous, copy_frames, avail;
@@ -1365,16 +1365,27 @@ int pcm_mmap_commit(struct pcm *pcm, unsigned int offset, unsigned int frames)
 }
 
 static int pcm_mmap_transfer_areas(struct pcm *pcm, char *buf,
-                                unsigned int offset, unsigned int size)
+                                unsigned int offset, unsigned int size,
+                                void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
-    void *pcm_areas;
+    // https://stackoverflow.com/a/840504
+
+    char *pcm_areas;
     int commit;
     unsigned int pcm_offset, frames, count = 0;
+
 
     while (pcm_mmap_avail(pcm) && size) {
         frames = size;
         pcm_mmap_begin(pcm, &pcm_areas, &pcm_offset, &frames);
-        pcm_areas_copy(pcm, pcm_offset, buf, offset, frames);
+
+        if (use_pcm_areas == NULL) {
+            pcm_areas_copy(pcm, pcm_offset, buf, offset, frames);
+        }
+        else {
+           (*use_pcm_areas)(pcm, pcm_areas, pcm_offset, frames);
+        }
+
         commit = pcm_mmap_commit(pcm, pcm_offset, frames);
         if (commit < 0) {
             oops(pcm, commit, "failed to commit %d frames\n", frames);
@@ -1501,7 +1512,7 @@ int pcm_wait(struct pcm *pcm, int timeout)
  * However, this doesn't seems to offer any advantage over
  * the read/write syscalls. Should it be removed?
  */
-static int pcm_mmap_transfer(struct pcm *pcm, void *buffer, unsigned int frames)
+static int pcm_mmap_transfer(struct pcm *pcm, void *buffer, unsigned int frames, void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     int is_playback;
 
@@ -1560,7 +1571,7 @@ static int pcm_mmap_transfer(struct pcm *pcm, void *buffer, unsigned int frames)
 	    continue;
         }
 
-        transferred_frames = pcm_mmap_transfer_areas(pcm, buffer, user_offset, frames);
+        transferred_frames = pcm_mmap_transfer_areas(pcm, buffer, user_offset, frames, use_pcm_areas);
         if (transferred_frames < 0) {
             break;
         }
@@ -1601,7 +1612,7 @@ int pcm_mmap_read(struct pcm *pcm, void *data, unsigned int count)
         return -EINVAL;
 
     unsigned int frames = pcm_bytes_to_frames(pcm, count);
-    int res = pcm_readi(pcm, data, frames);
+    int res = pcm_readi(pcm, data, frames, NULL);
 
     if (res < 0) {
         return res;
@@ -1661,8 +1672,8 @@ static int pcm_rw_transfer(struct pcm *pcm, void *data, unsigned int frames)
     return res == 0 ? (int) transfer.result : -1;
 }
 
-static int pcm_generic_transfer(struct pcm *pcm, void *data,
-                                unsigned int frames)
+static int pcm_generic_transfer(struct pcm *pcm, void *data, unsigned int frames,
+                                void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     int res;
 
@@ -1680,7 +1691,7 @@ static int pcm_generic_transfer(struct pcm *pcm, void *data,
 again:
 
     if (pcm->flags & PCM_MMAP)
-        res = pcm_mmap_transfer(pcm, data, frames);
+        res = pcm_mmap_transfer(pcm, data, frames, use_pcm_areas);
     else
         res = pcm_rw_transfer(pcm, data, frames);
 
@@ -1725,7 +1736,7 @@ int pcm_writei(struct pcm *pcm, const void *data, unsigned int frame_count)
     if (pcm->flags & PCM_IN)
         return -EINVAL;
 
-    return pcm_generic_transfer(pcm, (void*) data, frame_count);
+    return pcm_generic_transfer(pcm, (void*) data, frame_count, NULL);
 }
 
 /** Reads audio samples from PCM.
@@ -1739,12 +1750,13 @@ int pcm_writei(struct pcm *pcm, const void *data, unsigned int frame_count)
  * @return On success, this function returns the number of frames written; otherwise, a negative number.
  * @ingroup libtinyalsa-pcm
  */
-int pcm_readi(struct pcm *pcm, void *data, unsigned int frame_count)
+int pcm_readi(struct pcm *pcm, void *data, unsigned int frame_count,
+    void (*use_pcm_areas)(struct pcm *pcm, char *, unsigned int, unsigned int))
 {
     if (!(pcm->flags & PCM_IN))
         return -EINVAL;
 
-    return pcm_generic_transfer(pcm, data, frame_count);
+    return pcm_generic_transfer(pcm, data, frame_count, use_pcm_areas);
 }
 
 /** Writes audio samples to PCM.
@@ -1783,7 +1795,7 @@ int pcm_write(struct pcm *pcm, const void *data, unsigned int count)
 int pcm_read(struct pcm *pcm, void *data, unsigned int count)
 {
     unsigned int requested_frames = pcm_bytes_to_frames(pcm, count);
-    int ret = pcm_readi(pcm, data, requested_frames);
+    int ret = pcm_readi(pcm, data, requested_frames, NULL);
 
     if (ret < 0)
         return ret;

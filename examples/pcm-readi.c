@@ -40,7 +40,7 @@ static size_t read_frames(void **frames)
         return 0;
     }
 
-    int read_count = pcm_readi(pcm, *frames, frames_per_sec);
+    int read_count = pcm_readi(pcm, *frames, frames_per_sec, NULL);
 
     size_t byte_count = pcm_frames_to_bytes(pcm, read_count);
 

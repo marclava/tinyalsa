@@ -48,7 +48,7 @@ target_link_libraries("tinyalsa" PUBLIC ${CMAKE_DL_LIBS})
 
 # Examples
 if(TINYALSA_BUILD_EXAMPLES)
-    set(TINYALSA_EXAMPLES pcm-readi pcm-writei)
+    set(TINYALSA_EXAMPLES pcm-readi pcm-readi-mmap pcm-writei)
 else()
     set(TINYALSA_EXAMPLES)
 endif()

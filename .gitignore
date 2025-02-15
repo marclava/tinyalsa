@@ -13,6 +13,7 @@
 
 /examples/audio.raw
 /examples/pcm-readi
+/examples/pcm-readi-mmap
 /examples/pcm-writei
 
 /utils/tinyplay
